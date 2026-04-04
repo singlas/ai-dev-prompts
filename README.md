@@ -182,6 +182,20 @@ Community-built skills and agent configurations you can add to Claude Code:
 - [agency-agents](https://github.com/msitarzewski/agency-agents) — specialized agent roles for Claude Code
 - [gstack](https://github.com/garrytan/gstack) — skills for QA, design review, shipping, and more
 - [get-shit-done](https://github.com/gsd-build/get-shit-done) — productivity-focused agent skills
+- [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) — 48 specialized agents mirroring a real studio hierarchy (Art Director, Level Designer, QA Lead, Sound Designer, etc.) with 36 workflow skills covering the full game dev lifecycle
+- [everything-claude-code](https://github.com/affaan-m/everything-claude-code) — complete performance optimization system from an Anthropic hackathon winner: skills, instincts, memory optimization, continuous learning, security scanning, and research-first development. Works across Claude Code, Codex, Cowork, and other AI agent harnesses
+
+### Tools & Templates
+
+- [ai-website-cloner-template](https://github.com/JCodesMore/ai-website-cloner-template) — AI-powered website cloning template
+- [youtube-shorts-pipeline](https://github.com/rushindrasinha/youtube-shorts-pipeline) — one command to research, script, generate b-roll, voiceover, animated captions, background music, thumbnail, and upload to YouTube (~90s video, ~3min wall time, ~$0.11 API cost)
+- [the-book-of-secret-knowledge](https://github.com/trimstray/the-book-of-secret-knowledge) — massive collection of CLI tools, one-liners, cheat sheets, web resources, manuals, and more for sysadmins, devops, pentesters, and researchers
+- [llmfit](https://github.com/AlexsJones/llmfit) — terminal tool that right-sizes LLM models to your hardware, scoring each model across quality, speed, fit, and context dimensions based on your RAM, CPU, and GPU
+- [Qwen3-Coder](https://github.com/QwenLM/Qwen3-Coder) — open-source coding model (3B active params, MoE) with Qwen Code CLI — open-source alternative to Claude Code with 1,000 free requests/day
+
+### Cost Optimization
+
+- [Reducing AI API call costs](https://x.com/ziwenxu_/status/2036277868246749581) — strategies for minimizing API spend
 
 ## License
 
