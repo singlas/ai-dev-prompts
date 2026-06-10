@@ -31,8 +31,18 @@ ai-dev-prompts/
 ├── codebase-audit-docs/     # 3-prompt multi-repo audit pipeline
 ├── web-optimization/        # PageSpeed + SEO/GEO/AEO prompts
 ├── workflows/               # Process & handover prompts
+├── skills/                  # Claude Code skills — full working agents, not just prompts
 └── site/                    # HTML guide page + assets
 ```
+
+### 0. Skills (`skills/`) — working Claude Code agents
+
+Complete, drop-in Claude Code skills (a `SKILL.md` plus any helper script it
+needs). First entry: [`skills/ticket-loop/`](skills/ticket-loop/) — an
+autonomous coding agent that works your Linear board and is managed entirely
+from a Telegram group (bug reports, approvals, clarifying questions), opening
+one reviewable PR per ticket. No framework, ~180 lines of stdlib Python + one
+skill file. More skills coming.
 
 ### 1. Context File Generators (`context-files/`)
 
