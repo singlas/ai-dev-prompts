@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-"""Telegram bridge for the agent ticket loop (see docs/superpowers/specs/2026-06-10-ticket-loop-design.md).
+"""Telegram bridge for the ticket-loop skill.
 
 Subcommands:
-  send [--ticket NIP-123] <text...>   Send a message to the agent group; prints {"message_id": N}.
+  send [--ticket ABC-123] <text...>   Send a message to the agent group; prints {"message_id": N}.
                                       With --ticket, records message_id -> ticket so a Telegram
                                       reply to that message matches the ticket on poll.
   poll [--timeout N]                  Long-poll getUpdates (default 25s); prints one JSON line per
                                       new human message in the agent group:
-                                      {message_id, from, text, ticket, reply_to_message_id}
-                                      `ticket` is resolved from a reply-to question or a NIP-### prefix.
+                                      {message_id, from, from_id, text, ticket, reply_to_message_id, media_path}
+                                      `ticket` is resolved from a reply-to question or an ABC-### prefix
+                                      (any Linear-style TEAM-123 key matches).
+                                      Photos (and image documents) are downloaded to
+                                      <repo>/.agent-loop/media/<message_id>.<ext>; `media_path` carries
+                                      the local path (null for text-only messages), `text` the caption.
+  send-photo [--ticket ABC-123] [--caption TEXT] <path>
+                                      Send an image file to the agent group; prints {"message_id": N}.
   discover                            Print every chat the bot has recently seen (id, type, title) —
                                       use to grab a new group's chat id. Does not consume updates.
 
 Env (from the environment or repo-root .env): TELEGRAM_BOT_TOKEN, AGENT_TELEGRAM_CHAT_ID.
-State: .local/agent-loop/state.json  {offset, questions: {message_id: "NIP-123"}}.
+State: <repo>/.agent-loop/state.json  {offset, questions: {message_id: "ABC-123"}} — gitignore .agent-loop/.
 Stdlib only — runs under any python3.
 """
 
@@ -26,9 +32,19 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-STATE_PATH = REPO_ROOT / ".local" / "agent-loop" / "state.json"
-TICKET_RE = re.compile(r"^\s*(NIP-\d+)\b", re.IGNORECASE)
+
+def find_repo_root() -> Path:
+    """Walk up from the script (then cwd) to the nearest directory containing .git."""
+    for base in (Path(__file__).resolve().parent, Path.cwd()):
+        for candidate in (base, *base.parents):
+            if (candidate / ".git").exists():
+                return candidate
+    return Path.cwd()
+
+
+REPO_ROOT = find_repo_root()
+STATE_PATH = REPO_ROOT / ".agent-loop" / "state.json"
+TICKET_RE = re.compile(r"^\s*([A-Z][A-Z0-9]*-\d+)\b", re.IGNORECASE)
 
 
 def load_env() -> None:
@@ -53,16 +69,20 @@ def require_env(name: str) -> str:
 
     value = os.environ.get(name, "").strip()
     if not value:
-        sys.exit(f"error: {name} is not set (add it to .env — see deploy/env.example)")
+        sys.exit(f"error: {name} is not set (add it to your repo-root .env — see env.example next to this script)")
     return value
 
 
 def api(method: str, params: dict, *, http_timeout: int = 35) -> dict:
+    return _request(method, urllib.parse.urlencode(params).encode(), {}, http_timeout)
+
+
+def _request(method: str, data: bytes, headers: dict, http_timeout: int) -> dict:
     token = require_env("TELEGRAM_BOT_TOKEN")
     url = f"https://api.telegram.org/bot{token}/{method}"
-    data = urllib.parse.urlencode(params).encode()
+    req = urllib.request.Request(url, data=data, headers=headers)
     try:
-        with urllib.request.urlopen(url, data=data, timeout=http_timeout) as resp:
+        with urllib.request.urlopen(req, timeout=http_timeout) as resp:
             payload = json.load(resp)
     except urllib.error.HTTPError as exc:
         sys.exit(f"error: telegram {method} failed: HTTP {exc.code} {exc.read().decode(errors='replace')[:300]}")
@@ -104,13 +124,42 @@ def cmd_send(args: argparse.Namespace) -> None:
     print(json.dumps({"message_id": message_id}))
 
 
+def download_media(msg: dict):
+    """Download a photo (or image document) attached to msg; return the local path or None.
+
+    A failed download degrades to a warning — the poll batch must still emit the
+    message (with its caption) rather than die on a transient file fetch.
+    """
+    photo = msg.get("photo")
+    doc = msg.get("document") or {}
+    if photo:
+        file_id = photo[-1]["file_id"]  # PhotoSize list is ordered smallest → largest
+    elif str(doc.get("mime_type") or "").startswith("image/"):
+        file_id = doc["file_id"]
+    else:
+        return None
+    token = require_env("TELEGRAM_BOT_TOKEN")
+    try:
+        remote = api("getFile", {"file_id": file_id}).get("file_path") or ""
+        ext = Path(remote).suffix or ".jpg"
+        dest = STATE_PATH.parent / "media" / f"{msg['message_id']}{ext}"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        url = f"https://api.telegram.org/file/bot{token}/{remote}"
+        with urllib.request.urlopen(url, timeout=60) as resp:
+            dest.write_bytes(resp.read())
+        return str(dest)
+    except (Exception, SystemExit) as exc:
+        print(f"warning: media download failed for message {msg.get('message_id')}: {exc}", file=sys.stderr)
+        return None
+
+
 def match_ticket(msg: dict, questions: dict):
-    """Return the issue key (e.g. NIP-123) this message answers, or None."""
+    """Return the issue key (e.g. ABC-123) this message answers, or None."""
     reply = msg.get("reply_to_message") or {}
     via_reply = questions.get(str(reply.get("message_id")))
     if via_reply:
         return via_reply
-    prefix = TICKET_RE.match(msg.get("text") or "")
+    prefix = TICKET_RE.match(msg.get("text") or msg.get("caption") or "")
     return prefix.group(1).upper() if prefix else None
 
 
@@ -146,15 +195,53 @@ def cmd_poll(args: argparse.Namespace) -> None:
             "text": msg.get("text") or (msg.get("caption") or ""),
             "ticket": ticket,
             "reply_to_message_id": (msg.get("reply_to_message") or {}).get("message_id"),
+            "media_path": download_media(msg),
         })
     # Crash-recovery affordance: the batch is persisted before the offset commit,
     # so a consumer that dies mid-processing can re-read what the advanced offset
     # would otherwise have swallowed.
     batch_path = STATE_PATH.parent / "last-batch.json"
+    batch_path.parent.mkdir(parents=True, exist_ok=True)
     batch_path.write_text(json.dumps(emitted, ensure_ascii=False, indent=2) + "\n")
     save_state(state)
     for line in emitted:
         print(json.dumps(line, ensure_ascii=False))
+
+
+def cmd_send_photo(args: argparse.Namespace) -> None:
+    import uuid
+
+    chat_id = require_env("AGENT_TELEGRAM_CHAT_ID")
+    path = Path(args.path)
+    if not path.is_file():
+        sys.exit(f"error: {path} is not a file")
+    boundary = uuid.uuid4().hex
+    parts = []
+    fields = {"chat_id": chat_id}
+    if args.caption:
+        fields["caption"] = args.caption
+    for name, value in fields.items():
+        parts.append(
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode()
+        )
+    parts.append(
+        f'--{boundary}\r\nContent-Disposition: form-data; name="photo"; filename="{path.name}"\r\n'
+        f"Content-Type: application/octet-stream\r\n\r\n".encode()
+    )
+    parts.append(path.read_bytes())
+    parts.append(f"\r\n--{boundary}--\r\n".encode())
+    result = _request(
+        "sendPhoto",
+        b"".join(parts),
+        {"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        http_timeout=60,
+    )
+    message_id = result["message_id"]
+    if args.ticket:
+        state = load_state()
+        state.setdefault("questions", {})[str(message_id)] = args.ticket.upper()
+        save_state(state)
+    print(json.dumps({"message_id": message_id}))
 
 
 def cmd_discover(_args: argparse.Namespace) -> None:
@@ -185,6 +272,12 @@ def main() -> None:
     p_poll = sub.add_parser("poll", help="fetch new messages from the agent group")
     p_poll.add_argument("--timeout", type=int, default=25, help="long-poll seconds (0 = instant)")
     p_poll.set_defaults(func=cmd_poll)
+
+    p_photo = sub.add_parser("send-photo", help="send an image file to the agent group")
+    p_photo.add_argument("--ticket", help="issue key this image belongs to (records reply matching)")
+    p_photo.add_argument("--caption", help="caption to send with the image")
+    p_photo.add_argument("path", help="path to the image file")
+    p_photo.set_defaults(func=cmd_send_photo)
 
     p_disc = sub.add_parser("discover", help="print chats the bot has recently seen")
     p_disc.set_defaults(func=cmd_discover)

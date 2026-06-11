@@ -40,9 +40,11 @@ ai-dev-prompts/
 Complete, drop-in Claude Code skills (a `SKILL.md` plus any helper script it
 needs). First entry: [`skills/ticket-loop/`](skills/ticket-loop/) — an
 autonomous coding agent that works your Linear board and is managed entirely
-from a Telegram group (bug reports, approvals, clarifying questions), opening
-one reviewable PR per ticket. No framework, ~180 lines of stdlib Python + one
-skill file. More skills coming.
+from a Telegram group (bug reports with screenshots, approvals, clarifying
+questions), opening one reviewable PR per ticket and keeping its open PRs
+mergeable. No framework — one skill file + one stdlib-Python Telegram bridge;
+copy the folder into `.claude/skills/` and follow its README. More skills
+coming.
 
 ### 1. Context File Generators (`context-files/`)
 
