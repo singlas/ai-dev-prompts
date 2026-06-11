@@ -2,6 +2,8 @@
 
 Curated AI prompts for developer workflows — context file generation, codebase documentation, audits, web optimization, and more. Built for teams standardizing on AI-assisted development.
 
+> **⭐ Featured: [`skills/ticket-loop/`](skills/ticket-loop/)** — an autonomous coding agent you manage from a Telegram group. It works your Linear board, asks clarifying questions in the group, and opens one reviewable PR per ticket — no framework, no service to host, just a Claude Code skill + a stdlib-Python bridge. Drop the folder into `.claude/skills/` and follow its README. Full story: [An engineer you manage from a group chat](https://niptao.com/blog/an-engineer-you-manage-from-a-group-chat/).
+
 ## The Problem
 
 Every major AI coding tool has its own project context file. Same purpose, different locations:
