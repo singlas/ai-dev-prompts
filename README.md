@@ -62,7 +62,7 @@ Prompts that scan your existing codebase and auto-generate the right context fil
 
 ### 2. Codebase Audit & Documentation (`codebase-audit-docs/`)
 
-A 3-prompt pipeline for multi-repo projects. Generates full platform documentation, runs a comprehensive codebase audit, and then updates AI context files in every repo — all using AI.
+A 3-prompt pipeline for multi-repo projects. Generates full platform documentation, runs a comprehensive codebase audit, and then updates AI context files in every repo — all using AI. See example output: [Sample Audit Report](https://www.shashanksingla.com/audit-report.html) · [Sample Documentation](https://www.shashanksingla.com/sample-documentation.html).
 
 **The workflow:**
 

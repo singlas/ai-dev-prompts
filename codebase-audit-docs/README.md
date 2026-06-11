@@ -2,6 +2,11 @@
 
 A 3-prompt workflow for generating comprehensive documentation, running a codebase audit, and updating AI context files across a multi-repo project.
 
+**See it in action** — two example outputs generated with these prompts:
+[Sample Audit Report](https://www.shashanksingla.com/audit-report.html) ·
+[Sample Documentation](https://www.shashanksingla.com/sample-documentation.html) ·
+[overview page](https://www.shashanksingla.com/ai-dev-prompts.html)
+
 ## Prerequisites
 
 - **GitHub CLI (`gh`)** — [Install](https://cli.github.com/) and authenticate with `gh auth login`
